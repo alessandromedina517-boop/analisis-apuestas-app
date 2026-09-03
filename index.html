@@ -29,4 +29,165 @@
     button { width: 100%; padding: 12px; background: #378add; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 14px; }
     button:hover { background: #2a6ab8; }
     .demo { background: #e6f1fb; color: #378add; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center; margin-top: 12px; }
-    .login-container { max-width: 360px; margin: 100px auto; background: white; padding: 2rem;
+    .login-container { max-width: 360px; margin: 100px auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .hidden { display: none; }
+    .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+    .row-label { color: #888; font-size: 13px; }
+    .row-value { font-weight: 600; color: #0b0b0b; }
+    .row-value.green { color: #0ca30c; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    let user = null;
+    let activeTab = 'dashboard';
+
+    const app = document.getElementById('app');
+
+    function renderLogin() {
+      app.innerHTML = `
+        <div class="login-container">
+          <h1 style="text-align: center; color: #378add; margin-bottom: 1rem;">⚽ Análisis de Apuestas</h1>
+          <input type="email" id="email" placeholder="correo@ejemplo.com">
+          <input type="password" id="password" placeholder="contraseña">
+          <button onclick="handleLogin()">Iniciar sesión</button>
+          <div class="demo">💡 Demo: usa cualquier correo/contraseña</div>
+        </div>
+      `;
+      document.getElementById('email').focus();
+    }
+
+    function handleLogin() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      if (email && password) {
+        user = { email, name: email.split('@')[0] };
+        renderApp();
+      } else {
+        alert('Completa email y contraseña');
+      }
+    }
+
+    function renderApp() {
+      let content = '';
+
+      if (activeTab === 'dashboard') {
+        content = `
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-label">ROI hoy</div>
+              <div class="stat-value green">+14.5%</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Sesión</div>
+              <div class="stat-value">S/ 219.50</div>
+            </div>
+          </div>
+          <h2 style="font-size: 16px; margin-bottom: 1rem;">Partidos recomendados</h2>
+          <div class="match">
+            <div class="match-info">
+              <h3>Real Sociedad vs RC Celta</h3>
+              <p>La Liga • 21:00</p>
+            </div>
+            <span class="badge">72%</span>
+          </div>
+          <div class="match">
+            <div class="match-info">
+              <h3>Toulouse vs Lille</h3>
+              <p>Ligue 1 • 18:45</p>
+            </div>
+            <span class="badge">85%</span>
+          </div>
+        `;
+      } else if (activeTab === 'charts') {
+        content = `
+          <h2 style="font-size: 16px; margin-bottom: 1rem;">Gráficos históricos</h2>
+          <div class="card">
+            <div class="row">
+              <span class="row-label">ROI últimos 9 días</span>
+              <span class="row-value green">+14.5%</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Rango mínimo</span>
+              <span class="row-value">-5.2%</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Rango máximo</span>
+              <span class="row-value green">+14.5%</span>
+            </div>
+            <div class="row" style="border-bottom: none;">
+              <span class="row-label">Tendencia</span>
+              <span class="row-value green">↑ Positiva</span>
+            </div>
+          </div>
+        `;
+      } else if (activeTab === 'analysis') {
+        content = `
+          <h2 style="font-size: 16px; margin-bottom: 1rem;">Análisis IA</h2>
+          <div class="card" style="background: #faeeda; border-color: #ba7517;">
+            <strong style="color: #ba7517;">🤖 Recomendación IA:</strong>
+            <p style="color: #ba7517; margin-top: 8px;">Apuesta en 1xBet. Ofrecen mejor cuota (+0.02) con menor riesgo de fraude respecto a Betano.</p>
+          </div>
+          <div class="card">
+            <div class="row">
+              <span class="row-label">Confianza predicción</span>
+              <span class="row-value green">85%</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Valor esperado</span>
+              <span class="row-value green">+6.4%</span>
+            </div>
+            <div class="row" style="border-bottom: none;">
+              <span class="row-label">Riesgo de fraude</span>
+              <span class="row-value">BAJO</span>
+            </div>
+          </div>
+        `;
+      } else if (activeTab === 'settings') {
+        content = `
+          <h2 style="font-size: 16px; margin-bottom: 1rem;">Mi cuenta</h2>
+          <div class="card">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 48px; height: 48px; border-radius: 50%; background: #378add; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 20px;">
+                ${user.name[0].toUpperCase()}
+              </div>
+              <div>
+                <div style="font-weight: 500;">${user.name}</div>
+                <div style="font-size: 12px; color: #888;">${user.email}</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="row">
+              <span class="row-label">Capital inicial</span>
+              <span class="row-value">S/ 1,500.00</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Capital actual</span>
+              <span class="row-value green">S/ 1,719.50</span>
+            </div>
+            <div class="row">
+              <span class="row-label">Ganancia neta</span>
+              <span class="row-value green">S/ 219.50</span>
+            </div>
+            <div class="row" style="border-bottom: none;">
+              <span class="row-label">ROI total</span>
+              <span class="row-value green">+14.6%</span>
+            </div>
+          </div>
+          <button onclick="handleLogout()" style="background: #d03b3b; margin-top: 1rem;">Cerrar sesión</button>
+        `;
+      }
+
+      app.innerHTML = `
+        <div class="container">
+          <div class="header">
+            <h1>⚽ Análisis de Apuestas</h1>
+            <p>IA + Análisis + Predicciones 🇵🇪</p>
+          </div>
+          <div class="content">${content}</div>
+          <div class="tabs">
+            <button class="tab ${activeTab === 'dashboard' ? 'active' : ''}" onclick="switchTab('dashboard')">📊</button>
+            <button class="tab ${activeTab === 'charts' ? 'active' : ''}" onclick="switchTab('charts')">📈</button>
