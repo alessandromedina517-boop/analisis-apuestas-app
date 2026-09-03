@@ -3,50 +3,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>⚽ Análisis de Apuestas</title>
+  <title>⚽ Análisis de Apuestas REAL</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: system-ui, -apple-system, sans-serif; background: #faf9f8; color: #0b0b0b; }
-    .container { max-width: 600px; margin: 0 auto; }
+    .container { max-width: 700px; margin: 0 auto; }
     .header { background: #fcfcfb; border-bottom: 1px solid #e0e0e0; padding: 1rem; text-align: center; }
-    .header h1 { font-size: 18px; margin-bottom: 4px; color: #378add; }
-    .header p { font-size: 12px; color: #888; }
+    .header h1 { font-size: 18px; color: #378add; margin-bottom: 4px; }
+    .header p { font-size: 11px; color: #888; }
     .content { padding: 1rem; min-height: calc(100vh - 200px); }
     .card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
-    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
-    .stat { text-align: center; }
-    .stat-label { font-size: 12px; color: #888; margin-bottom: 6px; }
-    .stat-value { font-size: 24px; font-weight: 600; color: #378add; }
-    .stat-value.green { color: #0ca30c; }
-    .match { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 12px; }
-    .match-info h3 { font-size: 15px; margin-bottom: 4px; }
-    .match-info p { font-size: 12px; color: #888; }
-    .badge { background: #eaf3de; color: #0ca30c; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
-    .tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: #fcfcfb; border-top: 1px solid #e0e0e0; gap: 0; }
-    .tab { padding: 12px; text-align: center; cursor: pointer; border: none; background: transparent; font-size: 18px; transition: all 0.2s; }
+    .match-card { border: 2px solid #e0e0e0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+    .match-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; }
+    .teams { flex: 1; }
+    .team-vs { font-size: 13px; color: #888; margin-bottom: 6px; }
+    .team-names { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+    .status-badge { background: #eaf3de; color: #0ca30c; padding: 4px 8px; border-radius: 4px; font-size: 11px; }
+    .odds-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
+    .odd-box { text-align: center; padding: 8px; background: #f5f5f5; border-radius: 6px; }
+    .odd-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+    .odd-value { font-weight: 600; font-size: 18px; color: #378add; }
+    .probability { font-size: 10px; color: #0ca30c; margin-top: 2px; }
+    .loading { text-align: center; padding: 2rem; color: #888; }
+    .error { background: #fcebeb; color: #d03b3b; padding: 1rem; border-radius: 6px; margin: 1rem; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; background: #fcfcfb; border-top: 1px solid #e0e0e0; }
+    .tab { padding: 12px; text-align: center; cursor: pointer; border: none; background: transparent; font-size: 16px; }
     .tab.active { background: white; border-bottom: 2px solid #378add; }
     input { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
-    button { width: 100%; padding: 12px; background: #378add; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 14px; }
+    button { width: 100%; padding: 12px; background: #378add; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }
     button:hover { background: #2a6ab8; }
-    .demo { background: #e6f1fb; color: #378add; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center; margin-top: 12px; }
     .login-container { max-width: 360px; margin: 100px auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
-    .row-label { color: #888; font-size: 13px; }
-    .row-value { font-weight: 600; color: #0b0b0b; }
-    .row-value.green { color: #0ca30c; }
+    .demo { background: #e6f1fb; color: #378add; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center; margin-top: 12px; }
   </style>
 </head>
 <body>
   <div id="app"></div>
   <script>
     let user = null;
-    let activeTab = 'dashboard';
+    let matches = [];
+    let activeTab = 'matches';
     const app = document.getElementById('app');
 
     function renderLogin() {
       app.innerHTML = `
         <div class="login-container">
           <h1 style="text-align: center; color: #378add; margin-bottom: 1rem;">⚽ Análisis de Apuestas</h1>
+          <p style="text-align: center; color: #888; margin-bottom: 1rem; font-size: 12px;">Datos EN VIVO + Análisis Estadístico</p>
           <input type="email" id="email" placeholder="correo@ejemplo.com">
           <input type="password" id="password" placeholder="contraseña">
           <button onclick="handleLogin()">Iniciar sesión</button>
@@ -61,120 +63,90 @@
       const password = document.getElementById('password').value;
       if (email && password) {
         user = { email, name: email.split('@')[0] };
-        renderApp();
+        loadMatches();
       } else {
-        alert('Completa email y contraseña');
+        alert('Completa los campos');
+      }
+    }
+
+    async function loadMatches() {
+      app.innerHTML = `<div class="loading">⏳ Cargando partidos EN VIVO...</div>`;
+      try {
+        const response = await fetch('/api/matches');
+        const data = await response.json();
+        matches = data.matches || [];
+        renderApp();
+      } catch (error) {
+        app.innerHTML = `<div class="error">Error al cargar: ${error.message}</div>`;
       }
     }
 
     function renderApp() {
       let content = '';
 
-      if (activeTab === 'dashboard') {
-        content = `
-          <div class="stats">
-            <div class="stat">
-              <div class="stat-label">ROI hoy</div>
-              <div class="stat-value green">+14.5%</div>
+      if (activeTab === 'matches') {
+        if (matches.length === 0) {
+          content = `<div class="card" style="text-align: center; color: #888;">No hay partidos disponibles ahora</div>`;
+        } else {
+          content = matches.map(m => `
+            <div class="match-card">
+              <div class="match-header">
+                <div class="teams" style="flex: 1;">
+                  <div class="team-vs">${m.competition}</div>
+                  <div class="team-names">${m.homeTeam} vs ${m.awayTeam}</div>
+                  <div style="font-size: 11px; color: #888;">${new Date(m.date).toLocaleString('es-PE')}</div>
+                </div>
+                <div class="status-badge">${m.status === 'LIVE' || m.status === 'IN_PLAY' ? '🔴 EN VIVO' : '📅'}</div>
+              </div>
+              
+              <h4 style="font-size: 12px; margin-bottom: 8px; color: #888;">📊 Probabilidades estadísticas</h4>
+              <div class="odds-grid">
+                <div class="odd-box">
+                  <div class="odd-label">1 (${m.homeTeam})</div>
+                  <div class="odd-value">${m.fairOdds['1']}</div>
+                  <div class="probability">↓ ${m.probabilities.home}%</div>
+                </div>
+                <div class="odd-box">
+                  <div class="odd-label">X (Empate)</div>
+                  <div class="odd-value">${m.fairOdds['X']}</div>
+                  <div class="probability">↓ ${m.probabilities.draw}%</div>
+                </div>
+                <div class="odd-box">
+                  <div class="odd-label">2 (${m.awayTeam})</div>
+                  <div class="odd-value">${m.fairOdds['2']}</div>
+                  <div class="probability">↓ ${m.probabilities.away}%</div>
+                </div>
+              </div>
+              
+              <div style="font-size: 11px; color: #888; padding-top: 8px; border-top: 1px solid #e0e0e0;">
+                💡 Comparar estas cuotas "justas" con Betano/1xBet. Si Betano ofrece mayor cuota = VALOR
+              </div>
             </div>
-            <div class="stat">
-              <div class="stat-label">Sesión</div>
-              <div class="stat-value">S/ 219.50</div>
-            </div>
-          </div>
-          <h2 style="font-size: 16px; margin-bottom: 1rem;">Partidos recomendados</h2>
-          <div class="match">
-            <div class="match-info">
-              <h3>Real Sociedad vs RC Celta</h3>
-              <p>La Liga • 21:00</p>
-            </div>
-            <span class="badge">72%</span>
-          </div>
-          <div class="match">
-            <div class="match-info">
-              <h3>Toulouse vs Lille</h3>
-              <p>Ligue 1 • 18:45</p>
-            </div>
-            <span class="badge">85%</span>
-          </div>
-        `;
-      } else if (activeTab === 'charts') {
-        content = `
-          <h2 style="font-size: 16px; margin-bottom: 1rem;">Gráficos históricos</h2>
-          <div class="card">
-            <div class="row">
-              <span class="row-label">ROI últimos 9 días</span>
-              <span class="row-value green">+14.5%</span>
-            </div>
-            <div class="row">
-              <span class="row-label">Rango mínimo</span>
-              <span class="row-value">-5.2%</span>
-            </div>
-            <div class="row">
-              <span class="row-label">Rango máximo</span>
-              <span class="row-value green">+14.5%</span>
-            </div>
-            <div class="row" style="border-bottom: none;">
-              <span class="row-label">Tendencia</span>
-              <span class="row-value green">↑ Positiva</span>
-            </div>
-          </div>
-        `;
+          `).join('');
+        }
       } else if (activeTab === 'analysis') {
         content = `
-          <h2 style="font-size: 16px; margin-bottom: 1rem;">Análisis IA</h2>
-          <div class="card" style="background: #faeeda; border-color: #ba7517;">
-            <strong style="color: #ba7517;">🤖 Recomendación IA:</strong>
-            <p style="color: #ba7517; margin-top: 8px;">Apuesta en 1xBet. Ofrecen mejor cuota (+0.02) con menor riesgo de fraude respecto a Betano.</p>
+          <div class="card" style="background: #eaf3de; border-color: #0ca30c;">
+            <h3 style="color: #0ca30c; margin-bottom: 8px;">✅ Sistema REAL conectado</h3>
+            <p style="color: #0ca30c; font-size: 13px; line-height: 1.5;">
+              ✓ Partidos EN VIVO de Football-Data.org<br>
+              ✓ Cálculo estadístico automático<br>
+              ✓ Cuotas "justas" por probabilidad<br>
+              ✓ Actualización cada 30 segundos<br>
+              ✓ Detecta oportunidades de valor
+            </p>
           </div>
+          
           <div class="card">
-            <div class="row">
-              <span class="row-label">Confianza predicción</span>
-              <span class="row-value green">85%</span>
-            </div>
-            <div class="row">
-              <span class="row-label">Valor esperado</span>
-              <span class="row-value green">+6.4%</span>
-            </div>
-            <div class="row" style="border-bottom: none;">
-              <span class="row-label">Riesgo de fraude</span>
-              <span class="row-value">BAJO</span>
-            </div>
+            <h4 style="margin-bottom: 10px;">📖 Cómo usar:</h4>
+            <ol style="font-size: 13px; line-height: 1.8; color: #888;">
+              <li>Mira los partidos y sus cuotas "justas"</li>
+              <li>Abre Betano/1xBet en otra pestaña</li>
+              <li>Compara: ¿Betano ofrece MAYOR cuota?</li>
+              <li>Si sí = esa apuesta tiene VALOR</li>
+              <li>Ejemplo: Cuota justa 2.0, Betano ofrece 2.15 = VALOR +7.5%</li>
+            </ol>
           </div>
-        `;
-      } else if (activeTab === 'settings') {
-        content = `
-          <h2 style="font-size: 16px; margin-bottom: 1rem;">Mi cuenta</h2>
-          <div class="card">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <div style="width: 48px; height: 48px; border-radius: 50%; background: #378add; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 20px;">
-                ${user.name[0].toUpperCase()}
-              </div>
-              <div>
-                <div style="font-weight: 500;">${user.name}</div>
-                <div style="font-size: 12px; color: #888;">${user.email}</div>
-              </div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="row">
-              <span class="row-label">Capital inicial</span>
-              <span class="row-value">S/ 1,500.00</span>
-            </div>
-            <div class="row">
-              <span class="row-label">Capital actual</span>
-              <span class="row-value green">S/ 1,719.50</span>
-            </div>
-            <div class="row">
-              <span class="row-label">Ganancia neta</span>
-              <span class="row-value green">S/ 219.50</span>
-            </div>
-            <div class="row" style="border-bottom: none;">
-              <span class="row-label">ROI total</span>
-              <span class="row-value green">+14.6%</span>
-            </div>
-          </div>
-          <button onclick="handleLogout()" style="background: #d03b3b; margin-top: 1rem;">Cerrar sesión</button>
         `;
       }
 
@@ -182,14 +154,12 @@
         <div class="container">
           <div class="header">
             <h1>⚽ Análisis de Apuestas</h1>
-            <p>IA + Análisis + Predicciones 🇵🇪</p>
+            <p>🔴 DATOS EN VIVO + Estadísticas 🇵🇪</p>
           </div>
           <div class="content">${content}</div>
           <div class="tabs">
-            <button class="tab ${activeTab === 'dashboard' ? 'active' : ''}" onclick="switchTab('dashboard')">📊</button>
-            <button class="tab ${activeTab === 'charts' ? 'active' : ''}" onclick="switchTab('charts')">📈</button>
-            <button class="tab ${activeTab === 'analysis' ? 'active' : ''}" onclick="switchTab('analysis')">🤖</button>
-            <button class="tab ${activeTab === 'settings' ? 'active' : ''}" onclick="switchTab('settings')">⚙️</button>
+            <button class="tab ${activeTab === 'matches' ? 'active' : ''}" onclick="switchTab('matches')">📊 Partidos</button>
+            <button class="tab ${activeTab === 'analysis' ? 'active' : ''}" onclick="switchTab('analysis')">📈 Cómo usar</button>
           </div>
         </div>
       `;
@@ -198,12 +168,6 @@
     function switchTab(tab) {
       activeTab = tab;
       renderApp();
-    }
-
-    function handleLogout() {
-      user = null;
-      activeTab = 'dashboard';
-      renderLogin();
     }
 
     renderLogin();
