@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚽ Análisis de Apuestas</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #faf9f8; color: #0b0b0b; }
+    .container { max-width: 600px; margin: 0 auto; }
+    .header { background: #fcfcfb; border-bottom: 1px solid #e0e0e0; padding: 1rem; text-align: center; }
+    .header h1 { font-size: 18px; margin-bottom: 4px; color: #378add; }
+    .header p { font-size: 12px; color: #888; }
+    .content { padding: 1rem; min-height: calc(100vh - 200px); }
+    .card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+    .stat { text-align: center; }
+    .stat-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+    .stat-value { font-size: 24px; font-weight: 600; color: #378add; }
+    .stat-value.green { color: #0ca30c; }
+    .match { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 12px; }
+    .match-info h3 { font-size: 15px; margin-bottom: 4px; }
+    .match-info p { font-size: 12px; color: #888; }
+    .badge { background: #eaf3de; color: #0ca30c; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: #fcfcfb; border-top: 1px solid #e0e0e0; gap: 0; }
+    .tab { padding: 12px; text-align: center; cursor: pointer; border: none; background: transparent; font-size: 18px; transition: all 0.2s; }
+    .tab.active { background: white; border-bottom: 2px solid #378add; }
+    input { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; background: #378add; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 14px; }
+    button:hover { background: #2a6ab8; }
+    .demo { background: #e6f1fb; color: #378add; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center; margin-top: 12px; }
+    .login-container { max-width: 360px; margin: 100px auto; background: white; padding: 2rem;
