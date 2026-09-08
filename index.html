@@ -365,6 +365,7 @@ async function loadMatches(){
 
   statusEl.textContent = "Consultando partidos del día...";
   let allMatches = [];
+  let errors = [];
   const date = todayISO();
 
   for(const code of activeCompetitions){
@@ -375,7 +376,14 @@ async function loadMatches(){
       await sleep(650); // respeto de límite de tasa del plan gratuito
     }catch(e){
       console.warn(e);
+      errors.push(code + ": " + e.message);
     }
+  }
+
+  if(allMatches.length === 0 && errors.length > 0){
+    statusEl.textContent = "";
+    listEl.innerHTML = `<div class="empty-note">Hubo un error consultando la API:<br>${errors.join("<br>")}</div>`;
+    return;
   }
 
   if(allMatches.length === 0){
@@ -406,9 +414,29 @@ async function loadMatches(){
 async function getStandings(competitionCode){
   if(standingsCache[competitionCode]) return standingsCache[competitionCode];
   const data = await apiGet(`/competitions/${competitionCode}/standings`);
-  const table = (data.standings.find(s=>s.type==="TOTAL") || data.standings[0]).table;
-  standingsCache[competitionCode] = table;
-  return table;
+  let byType = {};
+  (data.standings || []).forEach(s => byType[s.type] = s.table);
+  let usedFallback = false;
+  const totalPlayed = (byType.TOTAL || []).reduce((s,r)=>s+r.playedGames,0);
+
+  if(totalPlayed === 0){
+    // La temporada actual todavía no tiene partidos jugados (ej. jornada 1 recién hoy).
+    // Usamos la temporada anterior como referencia estadística.
+    const seasonYear = data.season ? new Date(data.season.startDate).getFullYear() : new Date().getFullYear();
+    try{
+      const prev = await apiGet(`/competitions/${competitionCode}/standings?season=${seasonYear-1}`);
+      let prevByType = {};
+      (prev.standings || []).forEach(s => prevByType[s.type] = s.table);
+      if((prevByType.TOTAL || []).reduce((s,r)=>s+r.playedGames,0) > 0){
+        byType = prevByType;
+        usedFallback = true;
+      }
+    }catch(e){ /* si falla, seguimos con la tabla vacía y lo avisamos igual */ }
+  }
+
+  const result = { total: byType.TOTAL || [], home: byType.HOME || [], away: byType.AWAY || [], usedFallback };
+  standingsCache[competitionCode] = result;
+  return result;
 }
 
 function findTeamRow(table, teamId){
@@ -428,8 +456,55 @@ function leagueAverages(table){
   };
 }
 
+// --- Datos de equipo (para liga doméstica y ubicación/altitud del estadio) ---
+let teamDetailCache = {};
+async function getTeamDetail(teamId){
+  if(teamDetailCache[teamId]) return teamDetailCache[teamId];
+  const data = await apiGet(`/teams/${teamId}`);
+  teamDetailCache[teamId] = data;
+  return data;
+}
+
+// Competiciones donde los dos equipos pueden venir de ligas distintas
+// (ahí sí tiene sentido mostrar "posición en su liga local" aparte de la tabla del torneo)
+const CROSS_LEAGUE_COMPETITIONS = new Set(["CL"]);
+
+async function getDomesticLeagueRow(teamId, currentCompCode){
+  try{
+    const detail = await getTeamDetail(teamId);
+    const leagues = (detail.runningCompetitions || []).filter(c => c.type === "LEAGUE");
+    if(leagues.length === 0) return null;
+    const comp = leagues[0];
+    const std = await getStandings(comp.code);
+    const row = findTeamRow(std.total, teamId);
+    if(!row) return null;
+    return { compName: comp.name, row, usedFallback: std.usedFallback };
+  }catch(e){ return null; }
+}
+
+// Ciudades/estadios de altitud significativa (>2000m) relevantes para fútbol sudamericano y andino.
+// Referencia estática: no existe una API que dé esto automáticamente.
+const ALTITUDE_DB = [
+  {city:"La Paz", alt:3640}, {city:"El Alto", alt:4150}, {city:"Quito", alt:2850},
+  {city:"Cusco", alt:3399}, {city:"Bogotá", alt:2640}, {city:"Sucre", alt:2810},
+  {city:"Huancayo", alt:3259}, {city:"Potosí", alt:4070}, {city:"Cochabamba", alt:2570},
+  {city:"Bogota", alt:2640}, {city:"Arequipa", alt:2335}, {city:"Tunja", alt:2820},
+];
+
+function detectAltitude(...texts){
+  const joined = texts.filter(Boolean).join(" | ").toLowerCase();
+  for(const entry of ALTITUDE_DB){
+    if(joined.includes(entry.city.toLowerCase())) return entry;
+  }
+  return null;
+}
+
 async function getRecentForm(teamId){
-  const data = await apiGet(`/teams/${teamId}/matches?status=FINISHED&limit=5`);
+  const to = todayISO();
+  const fromDate = new Date();
+  fromDate.setDate(fromDate.getDate() - 365);
+  const from = fromDate.toISOString().slice(0,10);
+  const data = await apiGet(`/teams/${teamId}/matches?status=FINISHED&dateFrom=${from}&dateTo=${to}`);
   const matches = (data.matches || []).slice(-5);
   return matches.map(m=>{
     const isHome = m.homeTeam.id === teamId;
@@ -479,84 +554,203 @@ async function buildDossier(match){
 
   try{
     const compCode = match.competition.code;
-    const table = await getStandings(compCode);
+    const isCrossLeague = CROSS_LEAGUE_COMPETITIONS.has(compCode);
+    const std = await getStandings(compCode);
     await sleep(400);
+    const { total: table, usedFallback } = std;
     const homeRow = findTeamRow(table, match.homeTeam.id);
     const awayRow = findTeamRow(table, match.awayTeam.id);
-    const leagueAvg = leagueAverages(table);
+    const homeRowAtHome = findTeamRow(std.home, match.homeTeam.id);
+    const awayRowAway = findTeamRow(std.away, match.awayTeam.id);
+
+    const statsAvailable = !!(homeRow && awayRow && homeRow.playedGames > 0 && awayRow.playedGames > 0);
+    // homeRow/awayRow pueden venir "undefined" si el equipo no jugó la tabla de referencia (ej. recién ascendido)
+    const leagueAvg = statsAvailable ? leagueAverages(table) : null;
+
+    // ¿Hay suficiente muestra de partidos como local/visita específicamente para usar ese split?
+    const hasHomeAwaySplit = !!(homeRowAtHome && awayRowAway && homeRowAtHome.playedGames > 0 && awayRowAway.playedGames > 0);
 
     const homeForm = await getRecentForm(match.homeTeam.id);
     await sleep(400);
     const awayForm = await getRecentForm(match.awayTeam.id);
     await sleep(400);
     const h2h = await getH2H(match.id);
+    await sleep(400);
 
-    // fuerza de ataque/defensa relativa a la media de liga
-    const homeGFpg = homeRow.goalsFor / homeRow.playedGames;
-    const homeGApg = homeRow.goalsAgainst / homeRow.playedGames;
-    const awayGFpg = awayRow.goalsFor / awayRow.playedGames;
-    const awayGApg = awayRow.goalsAgainst / awayRow.playedGames;
-
-    const homeAttack = homeGFpg / leagueAvg.avgGoalsFor;
-    const homeDefense = homeGApg / leagueAvg.avgGoalsAgainst;
-    const awayAttack = awayGFpg / leagueAvg.avgGoalsFor;
-    const awayDefense = awayGApg / leagueAvg.avgGoalsAgainst;
-
-    const lambdaHome = homeAttack * awayDefense * leagueAvg.avgGoalsFor;
-    const lambdaAway = awayAttack * homeDefense * leagueAvg.avgGoalsAgainst;
-
-    const markets = computeMarkets(lambdaHome, lambdaAway);
-
-    // detección de inconsistencia: forma reciente vs promedio de temporada
-    function formScore(formArr){
-      const map = {W:3, D:1, L:0};
-      if(formArr.length===0) return null;
-      return formArr.reduce((s,r)=>s+map[r],0) / (formArr.length*3);
+    // Liga doméstica de cada equipo (relevante cuando compiten equipos de ligas distintas, ej. Champions League)
+    let homeDomestic = null, awayDomestic = null;
+    let homeDetail = null;
+    if(isCrossLeague){
+      homeDomestic = await getDomesticLeagueRow(match.homeTeam.id, compCode);
+      await sleep(300);
+      awayDomestic = await getDomesticLeagueRow(match.awayTeam.id, compCode);
+      await sleep(300);
     }
-    const homeFormScore = formScore(homeForm);
-    const awayFormScore = formScore(awayForm);
-    const homeSeasonScore = homeRow.points / (homeRow.playedGames*3);
-    const awaySeasonScore = awayRow.points / (awayRow.playedGames*3);
+    try{ homeDetail = await getTeamDetail(match.homeTeam.id); }catch(e){ homeDetail = null; }
 
-    const flags = [];
-    if(homeFormScore !== null && Math.abs(homeFormScore - homeSeasonScore) > 0.35){
-      flags.push(`${match.homeTeam.name} muestra una forma reciente que se aparta notablemente de su promedio de temporada (posible cambio de tendencia).`);
+    // Factor altitud (referencia estática, no hay API que lo dé)
+    const altitude = detectAltitude(match.venue, homeDetail && homeDetail.venue, homeDetail && homeDetail.address, homeDetail && homeDetail.area && homeDetail.area.name);
+
+    let statSection = "";
+    let modelSection = "";
+    let verdictSection = "";
+
+    if(statsAvailable){
+      // Si hay muestra suficiente como local/visita, usamos esos números específicos
+      // (mejor estimación de la ventaja de localía). Si no, caemos al promedio general.
+      const hSrc = hasHomeAwaySplit ? homeRowAtHome : homeRow;
+      const aSrc = hasHomeAwaySplit ? awayRowAway : awayRow;
+
+      const homeGFpg = hSrc.goalsFor / hSrc.playedGames;
+      const homeGApg = hSrc.goalsAgainst / hSrc.playedGames;
+      const awayGFpg = aSrc.goalsFor / aSrc.playedGames;
+      const awayGApg = aSrc.goalsAgainst / aSrc.playedGames;
+
+      const homeAttack = homeGFpg / leagueAvg.avgGoalsFor;
+      const homeDefense = homeGApg / leagueAvg.avgGoalsAgainst;
+      const awayAttack = awayGFpg / leagueAvg.avgGoalsFor;
+      const awayDefense = awayGApg / leagueAvg.avgGoalsAgainst;
+
+      const lambdaHome = homeAttack * awayDefense * leagueAvg.avgGoalsFor;
+      const lambdaAway = awayAttack * homeDefense * leagueAvg.avgGoalsAgainst;
+
+      const markets = computeMarkets(lambdaHome, lambdaAway);
+
+      function formScore(formArr){
+        const map = {W:3, D:1, L:0};
+        if(formArr.length===0) return null;
+        return formArr.reduce((s,r)=>s+map[r],0) / (formArr.length*3);
+      }
+      const homeFormScore = formScore(homeForm);
+      const awayFormScore = formScore(awayForm);
+      const homeSeasonScore = homeRow.points / (homeRow.playedGames*3);
+      const awaySeasonScore = awayRow.points / (awayRow.playedGames*3);
+
+      const flags = [];
+      if(homeFormScore !== null && Math.abs(homeFormScore - homeSeasonScore) > 0.35){
+        flags.push(`${match.homeTeam.name} muestra una forma reciente que se aparta notablemente de su promedio de temporada (posible cambio de tendencia).`);
+      }
+      if(awayFormScore !== null && Math.abs(awayFormScore - awaySeasonScore) > 0.35){
+        flags.push(`${match.awayTeam.name} muestra una forma reciente que se aparta notablemente de su promedio de temporada (posible cambio de tendencia).`);
+      }
+
+      if(altitude && altitude.alt >= 2500){
+        flags.push(`El partido se juega en una ciudad de altitud significativa (${altitude.city}, ~${altitude.alt} m). Es un factor físico conocido que suele favorecer al equipo local, especialmente ante rivales que no juegan habitualmente en altura.`);
+      }
+
+      const outcomes = [
+        {label: match.homeTeam.name + " gana", val: markets.pHome},
+        {label: "Empate", val: markets.pDraw},
+        {label: match.awayTeam.name + " gana", val: markets.pAway},
+      ].sort((a,b)=>b.val-a.val);
+      const favored = outcomes[0];
+
+      statSection = `
+        <div class="section">
+          <div class="section-label"><span class="section-num">04</span><h3>Ofensiva y defensiva ${hasHomeAwaySplit ? "(como local / como visita)" : "(promedio general, por partido)"}</h3></div>
+          <div class="two-col">
+            <div class="team-block">
+              <div class="stat-row"><span class="k">Goles a favor</span><span class="v">${homeGFpg.toFixed(2)}</span></div>
+              <div class="stat-row"><span class="k">Goles en contra</span><span class="v">${homeGApg.toFixed(2)}</span></div>
+              <div class="stat-row"><span class="k">Índice de ataque</span><span class="v">${homeAttack.toFixed(2)}</span></div>
+              <div class="stat-row"><span class="k">Índice de defensa</span><span class="v">${homeDefense.toFixed(2)}</span></div>
+            </div>
+            <div class="team-block">
+              <div class="stat-row"><span class="k">Goles a favor</span><span class="v">${awayGFpg.toFixed(2)}</span></div>
+              <div class="stat-row"><span class="k">Goles en contra</span><span class="v">${awayGApg.toFixed(2)}</span></div>
+              <div class="stat-row"><span class="k">Índice de ataque</span><span class="v">${awayAttack.toFixed(2)}</span></div>
+              <div class="stat-row"><span class="k">Índice de defensa</span><span class="v">${awayDefense.toFixed(2)}</span></div>
+            </div>
+          </div>
+        </div>`;
+
+      modelSection = `
+        <div class="section">
+          <div class="section-label"><span class="section-num">06</span><h3>Modelo estadístico (Poisson)</h3></div>
+          ${outcomes.map(o=>`
+            <div class="prob-bar-wrap">
+              <div class="prob-bar-top"><span class="label">${o.label}</span><span class="pct">${pct(o.val)}</span></div>
+              <div class="prob-bar-track"><div class="prob-bar-fill" style="width:${(o.val*100).toFixed(1)}%"></div></div>
+            </div>
+          `).join("")}
+          <div class="market-grid">
+            <div class="market-card">
+              <div class="mk-label">Goles esperados (xG modelo)</div>
+              <div class="mk-val">${lambdaHome.toFixed(2)} - ${lambdaAway.toFixed(2)}</div>
+            </div>
+            <div class="market-card">
+              <div class="mk-label">Prob. Over 2.5 goles</div>
+              <div class="mk-val">${pct(markets.pOver25)}</div>
+            </div>
+            <div class="market-card">
+              <div class="mk-label">Prob. Under 2.5 goles</div>
+              <div class="mk-val">${pct(1-markets.pOver25)}</div>
+            </div>
+            <div class="market-card">
+              <div class="mk-label">Ambos anotan (BTTS)</div>
+              <div class="mk-val">${pct(markets.pBTTS)}</div>
+            </div>
+          </div>
+        </div>`;
+
+      verdictSection = `
+        <div class="section">
+          <div class="section-label"><span class="section-num">07</span><h3>Veredicto investigativo</h3></div>
+          <div class="verdict">
+            <p>El modelo estadístico favorece a <span class="highlight">${favored.label}</span> con ${pct(favored.val)} de probabilidad, basado en el desempeño ofensivo/defensivo${usedFallback ? " de la temporada anterior" : " de la temporada en curso"}.</p>
+            <p>${markets.pOver25 > 0.55 ? "El total de goles esperado sugiere un partido abierto (favorece Over 2.5)." : "El total de goles esperado sugiere un partido cerrado (favorece Under 2.5)."}</p>
+            ${flags.length ? flags.map(f=>`<p class="flag">⚠ ${f}</p>`).join("") : '<p>No se detectaron inconsistencias relevantes entre la forma reciente y el promedio de temporada de ninguno de los dos equipos.</p>'}
+          </div>
+        </div>`;
+    } else {
+      statSection = `
+        <div class="section">
+          <div class="section-label"><span class="section-num">04</span><h3>Ofensiva y defensiva (por partido)</h3></div>
+          <div class="empty-note">Aún no hay suficientes partidos jugados en esta competición para calcular estas estadísticas.</div>
+        </div>`;
+      modelSection = `
+        <div class="section">
+          <div class="section-label"><span class="section-num">06</span><h3>Modelo estadístico (Poisson)</h3></div>
+          <div class="empty-note">No se puede calcular todavía: faltan datos de partidos jugados esta temporada para uno o ambos equipos en esta competición.</div>
+        </div>`;
+      verdictSection = `
+        <div class="section">
+          <div class="section-label"><span class="section-num">07</span><h3>Veredicto investigativo</h3></div>
+          <div class="verdict">
+            <p>Este expediente no puede emitir un veredicto estadístico todavía porque la competición no tiene suficientes partidos jugados esta temporada. Vuelve a consultarlo cuando avancen algunas jornadas.</p>
+          </div>
+        </div>`;
     }
-    if(awayFormScore !== null && Math.abs(awayFormScore - awaySeasonScore) > 0.35){
-      flags.push(`${match.awayTeam.name} muestra una forma reciente que se aparta notablemente de su promedio de temporada (posible cambio de tendencia).`);
-    }
-
-    const outcomes = [
-      {label: match.homeTeam.name + " gana", val: markets.pHome},
-      {label: "Empate", val: markets.pDraw},
-      {label: match.awayTeam.name + " gana", val: markets.pAway},
-    ].sort((a,b)=>b.val-a.val);
-
-    const favored = outcomes[0];
 
     dossier.innerHTML = `
       <div class="dossier-head">
         <h2>${match.homeTeam.name} vs ${match.awayTeam.name}</h2>
         <div class="code">${match.competition.name} · ${new Date(match.utcDate).toLocaleString('es-PE')}</div>
       </div>
-      <div class="dossier-sub">Expediente generado automáticamente a partir de datos de temporada en curso.</div>
+      <div class="dossier-sub">${usedFallback ? "⚠ Temporada actual sin partidos jugados aún — se usan datos de la temporada anterior como referencia." : "Expediente generado automáticamente a partir de datos de temporada en curso."}</div>
 
       <div class="section">
         <div class="section-label"><span class="section-num">01</span><h3>Posición en tabla</h3></div>
         <div class="two-col">
           <div class="team-block">
             <div class="name">${match.homeTeam.name}</div>
-            <div class="stat-row"><span class="k">Posición</span><span class="v">${homeRow.position}ª</span></div>
+            ${homeRow ? `
+            <div class="stat-row"><span class="k">Posición en ${match.competition.name}</span><span class="v">${homeRow.position}ª</span></div>
             <div class="stat-row"><span class="k">Puntos</span><span class="v">${homeRow.points}</span></div>
             <div class="stat-row"><span class="k">PJ</span><span class="v">${homeRow.playedGames}</span></div>
             <div class="stat-row"><span class="k">GF / GC</span><span class="v">${homeRow.goalsFor} / ${homeRow.goalsAgainst}</span></div>
+            ` : '<div class="k">Sin datos en esta competición</div>'}
+            ${homeDomestic ? `<div class="stat-row"><span class="k">Posición en ${homeDomestic.compName}</span><span class="v">${homeDomestic.row.position}ª (${homeDomestic.row.points} pts)</span></div>` : ""}
           </div>
           <div class="team-block">
             <div class="name">${match.awayTeam.name}</div>
-            <div class="stat-row"><span class="k">Posición</span><span class="v">${awayRow.position}ª</span></div>
+            ${awayRow ? `
+            <div class="stat-row"><span class="k">Posición en ${match.competition.name}</span><span class="v">${awayRow.position}ª</span></div>
             <div class="stat-row"><span class="k">Puntos</span><span class="v">${awayRow.points}</span></div>
             <div class="stat-row"><span class="k">PJ</span><span class="v">${awayRow.playedGames}</span></div>
             <div class="stat-row"><span class="k">GF / GC</span><span class="v">${awayRow.goalsFor} / ${awayRow.goalsAgainst}</span></div>
+            ` : '<div class="k">Sin datos en esta competición</div>'}
+            ${awayDomestic ? `<div class="stat-row"><span class="k">Posición en ${awayDomestic.compName}</span><span class="v">${awayDomestic.row.position}ª (${awayDomestic.row.points} pts)</span></div>` : ""}
           </div>
         </div>
       </div>
@@ -576,25 +770,30 @@ async function buildDossier(match){
       </div>
 
       <div class="section">
-        <div class="section-label"><span class="section-num">03</span><h3>Ofensiva y defensiva (por partido)</h3></div>
+        <div class="section-label"><span class="section-num">03</span><h3>Factor cancha</h3></div>
         <div class="two-col">
           <div class="team-block">
-            <div class="stat-row"><span class="k">Goles a favor</span><span class="v">${homeGFpg.toFixed(2)}</span></div>
-            <div class="stat-row"><span class="k">Goles en contra</span><span class="v">${homeGApg.toFixed(2)}</span></div>
-            <div class="stat-row"><span class="k">Índice de ataque</span><span class="v">${homeAttack.toFixed(2)}</span></div>
-            <div class="stat-row"><span class="k">Índice de defensa</span><span class="v">${homeDefense.toFixed(2)}</span></div>
+            <div class="name">${match.homeTeam.name} (local)</div>
+            ${homeRowAtHome && homeRowAtHome.playedGames > 0 ? `
+            <div class="stat-row"><span class="k">Récord como local</span><span class="v">${homeRowAtHome.won}G ${homeRowAtHome.draw}E ${homeRowAtHome.lost}P</span></div>
+            <div class="stat-row"><span class="k">Goles/partido (local)</span><span class="v">${(homeRowAtHome.goalsFor/homeRowAtHome.playedGames).toFixed(2)}</span></div>
+            ` : '<div class="k">Sin muestra suficiente como local esta temporada</div>'}
           </div>
           <div class="team-block">
-            <div class="stat-row"><span class="k">Goles a favor</span><span class="v">${awayGFpg.toFixed(2)}</span></div>
-            <div class="stat-row"><span class="k">Goles en contra</span><span class="v">${awayGApg.toFixed(2)}</span></div>
-            <div class="stat-row"><span class="k">Índice de ataque</span><span class="v">${awayAttack.toFixed(2)}</span></div>
-            <div class="stat-row"><span class="k">Índice de defensa</span><span class="v">${awayDefense.toFixed(2)}</span></div>
+            <div class="name">${match.awayTeam.name} (visita)</div>
+            ${awayRowAway && awayRowAway.playedGames > 0 ? `
+            <div class="stat-row"><span class="k">Récord como visita</span><span class="v">${awayRowAway.won}G ${awayRowAway.draw}E ${awayRowAway.lost}P</span></div>
+            <div class="stat-row"><span class="k">Goles/partido (visita)</span><span class="v">${(awayRowAway.goalsFor/awayRowAway.playedGames).toFixed(2)}</span></div>
+            ` : '<div class="k">Sin muestra suficiente como visitante esta temporada</div>'}
           </div>
         </div>
+        ${altitude ? `<div class="empty-note" style="text-align:left; padding-top:14px;">📍 Ciudad de altitud detectada: <strong>${altitude.city}</strong> (~${altitude.alt} m). ${altitude.alt >= 2500 ? "Altitud considerada relevante para el desgaste físico del equipo visitante." : ""}</div>` : ""}
       </div>
 
+      ${statSection}
+
       <div class="section">
-        <div class="section-label"><span class="section-num">04</span><h3>Historial directo</h3></div>
+        <div class="section-label"><span class="section-num">05</span><h3>Historial directo</h3></div>
         ${h2h.length ? h2h.map(hm=>`
           <div class="h2h-line">
             <span>${hm.homeTeam.name} ${hm.score.fullTime.home ?? "-"} - ${hm.score.fullTime.away ?? "-"} ${hm.awayTeam.name}</span>
@@ -603,42 +802,8 @@ async function buildDossier(match){
         `).join("") : '<div class="empty-note">Sin enfrentamientos recientes registrados.</div>'}
       </div>
 
-      <div class="section">
-        <div class="section-label"><span class="section-num">05</span><h3>Modelo estadístico (Poisson)</h3></div>
-        ${outcomes.map(o=>`
-          <div class="prob-bar-wrap">
-            <div class="prob-bar-top"><span class="label">${o.label}</span><span class="pct">${pct(o.val)}</span></div>
-            <div class="prob-bar-track"><div class="prob-bar-fill" style="width:${(o.val*100).toFixed(1)}%"></div></div>
-          </div>
-        `).join("")}
-        <div class="market-grid">
-          <div class="market-card">
-            <div class="mk-label">Goles esperados (xG modelo)</div>
-            <div class="mk-val">${lambdaHome.toFixed(2)} - ${lambdaAway.toFixed(2)}</div>
-          </div>
-          <div class="market-card">
-            <div class="mk-label">Prob. Over 2.5 goles</div>
-            <div class="mk-val">${pct(markets.pOver25)}</div>
-          </div>
-          <div class="market-card">
-            <div class="mk-label">Prob. Under 2.5 goles</div>
-            <div class="mk-val">${pct(1-markets.pOver25)}</div>
-          </div>
-          <div class="market-card">
-            <div class="mk-label">Ambos anotan (BTTS)</div>
-            <div class="mk-val">${pct(markets.pBTTS)}</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-label"><span class="section-num">06</span><h3>Veredicto investigativo</h3></div>
-        <div class="verdict">
-          <p>El modelo estadístico favorece a <span class="highlight">${favored.label}</span> con ${pct(favored.val)} de probabilidad, basado en el desempeño ofensivo/defensivo de la temporada en curso.</p>
-          <p>${markets.pOver25 > 0.55 ? "El total de goles esperado sugiere un partido abierto (favorece Over 2.5)." : "El total de goles esperado sugiere un partido cerrado (favorece Under 2.5)."}</p>
-          ${flags.length ? flags.map(f=>`<p class="flag">⚠ ${f}</p>`).join("") : '<p>No se detectaron inconsistencias relevantes entre la forma reciente y el promedio de temporada de ninguno de los dos equipos.</p>'}
-        </div>
-      </div>
+      ${modelSection}
+      ${verdictSection}
     `;
 
   }catch(e){
