@@ -1,239 +1,651 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>⚽ Análisis de Apuestas PRO</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: #faf9f8; color: #0b0b0b; }
-    .container { max-width: 900px; margin: 0 auto; }
-    .header { background: #fcfcfb; border-bottom: 1px solid #e0e0e0; padding: 1rem; text-align: center; }
-    .header h1 { font-size: 18px; color: #378add; margin-bottom: 4px; }
-    .header p { font-size: 11px; color: #888; }
-    .content { padding: 1rem; min-height: calc(100vh - 200px); }
-    .match-card { border: 2px solid #378add; border-radius: 8px; padding: 1.2rem; margin-bottom: 1.5rem; background: white; }
-    .match-header { padding-bottom: 1rem; border-bottom: 2px solid #e0e0e0; margin-bottom: 1rem; }
-    .team-vs { font-size: 12px; color: #888; font-weight: 500; margin-bottom: 4px; }
-    .team-names { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
-    .status-badge { display: inline-block; background: #eaf3de; color: #0ca30c; padding: 4px 8px; border-radius: 4px; font-size: 11px; }
-    .mercado { margin-bottom: 1.2rem; padding-bottom: 1rem; border-bottom: 1px solid #f0f0f0; }
-    .mercado-titulo { font-size: 12px; font-weight: 700; color: #378add; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-    .mercado-icon { font-size: 14px; }
-    .opciones { display: grid; gap: 8px; }
-    .opcion { padding: 10px; background: #f5f5f5; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e0e0e0; cursor: pointer; transition: all 0.2s; }
-    .opcion:hover { background: #eef5ff; border-color: #378add; }
-    .opcion-left { flex: 1; }
-    .opcion-nombre { font-size: 12px; color: #0b0b0b; font-weight: 500; margin-bottom: 2px; }
-    .opcion-prob { font-size: 10px; color: #888; }
-    .opcion-cuota { font-weight: 700; font-size: 16px; color: #378add; }
-    .tabs { display: grid; grid-template-columns: repeat(2, 1fr); background: #fcfcfb; border-top: 1px solid #e0e0e0; }
-    .tab { padding: 12px; text-align: center; cursor: pointer; border: none; background: transparent; font-size: 14px; }
-    .tab.active { background: white; border-bottom: 2px solid #378add; }
-    input { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
-    button { width: 100%; padding: 12px; background: #378add; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }
-    .login-container { max-width: 360px; margin: 100px auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .demo { background: #e6f1fb; color: #378add; padding: 12px; border-radius: 6px; font-size: 12px; text-align: center; margin-top: 12px; }
-    .loading { text-align: center; padding: 2rem; color: #888; }
-    .card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
-    .stats-box { background: #f9f9f9; border-left: 3px solid #378add; padding: 10px; margin-top: 1rem; font-size: 12px; }
-    .stats-row { display: flex; justify-content: space-between; padding: 4px 0; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expediente Deportivo — Análisis Estadístico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12161c;
+    --panel:#1b212a;
+    --panel-2:#212934;
+    --line:#2a313d;
+    --text:#ede9e2;
+    --muted:#8791a1;
+    --muted-2:#5c6472;
+    --gold:#c9a227;
+    --alert:#b3453d;
+    --ok:#4f9b6e;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:760px;
+    margin:0 auto;
+    padding:48px 24px 120px;
+  }
+  header.masthead{
+    border-bottom:1px solid var(--line);
+    padding-bottom:24px;
+    margin-bottom:32px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  h1{
+    font-family:'Source Serif 4',serif;
+    font-weight:600;
+    font-size:1.9rem;
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  .masthead p{
+    color:var(--muted);
+    font-size:0.92rem;
+    margin:0;
+    max-width:46ch;
+  }
+  .file-meta{
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.78rem;
+    color:var(--muted-2);
+    text-align:right;
+    white-space:nowrap;
+  }
+  .comp-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:28px;
+  }
+  .comp-chip{
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--muted);
+    font-size:0.82rem;
+    padding:7px 14px;
+    border-radius:3px;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+    transition:border-color .15s, color .15s;
+  }
+  .comp-chip:hover{ border-color:var(--gold); color:var(--text); }
+  .comp-chip.active{ border-color:var(--gold); color:var(--gold); }
+
+  .status-line{
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.82rem;
+    color:var(--muted-2);
+    margin:12px 0 24px;
+    min-height:1.2em;
+  }
+
+  .match-list{ margin-bottom:8px; }
+  .match-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding:14px 4px;
+    border-bottom:1px solid var(--line);
+    cursor:pointer;
+  }
+  .match-row:hover .teams{ color:var(--gold); }
+  .match-row .teams{
+    font-family:'Source Serif 4',serif;
+    font-size:1.05rem;
+  }
+  .match-row .sub{
+    color:var(--muted-2);
+    font-size:0.78rem;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .match-row .time{
+    font-family:'JetBrains Mono',monospace;
+    color:var(--muted);
+    font-size:0.85rem;
+    white-space:nowrap;
+  }
+
+  .dossier{
+    margin-top:36px;
+    border-top:2px solid var(--gold);
+    padding-top:24px;
+    display:none;
+  }
+  .dossier.open{ display:block; }
+  .dossier-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:4px;
+  }
+  .dossier-head h2{
+    font-family:'Source Serif 4',serif;
+    font-size:1.5rem;
+    margin:0;
+    font-weight:600;
+  }
+  .dossier-head .code{
+    font-family:'JetBrains Mono',monospace;
+    color:var(--muted-2);
+    font-size:0.78rem;
+  }
+  .dossier-sub{ color:var(--muted); font-size:0.85rem; margin:2px 0 28px; }
+
+  .section{ margin-bottom:30px; }
+  .section-label{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .section-num{
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.75rem;
+    color:var(--gold);
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:2px 6px;
+  }
+  .section-label h3{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:0.95rem;
+    margin:0;
+    color:var(--text);
+  }
+
+  .two-col{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+  }
+  @media (max-width:560px){ .two-col{ grid-template-columns:1fr; } }
+
+  .team-block{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:16px 18px;
+  }
+  .team-block .name{ font-family:'Source Serif 4',serif; font-size:1.05rem; margin-bottom:10px; }
+  .stat-row{
+    display:flex;
+    justify-content:space-between;
+    font-size:0.85rem;
+    padding:5px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .stat-row:last-child{ border-bottom:none; }
+  .stat-row .k{ color:var(--muted); }
+  .stat-row .v{ font-family:'JetBrains Mono',monospace; color:var(--text); }
+
+  .form-dots{ display:flex; gap:5px; margin-top:8px; }
+  .dot{
+    width:22px; height:22px;
+    border-radius:2px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.68rem;
+    font-weight:700;
+  }
+  .dot.W{ background:rgba(79,155,110,.18); color:var(--ok); }
+  .dot.D{ background:rgba(135,145,161,.18); color:var(--muted); }
+  .dot.L{ background:rgba(179,69,61,.18); color:var(--alert); }
+
+  .h2h-line{
+    display:flex; justify-content:space-between;
+    font-size:0.85rem; padding:8px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .h2h-line:last-child{ border-bottom:none; }
+  .h2h-line .date{ color:var(--muted-2); font-family:'JetBrains Mono',monospace; font-size:0.78rem; }
+
+  .prob-bar-wrap{ margin-bottom:16px; }
+  .prob-bar-top{
+    display:flex; justify-content:space-between;
+    font-size:0.85rem; margin-bottom:6px;
+  }
+  .prob-bar-top .label{ color:var(--text); }
+  .prob-bar-top .pct{ font-family:'JetBrains Mono',monospace; color:var(--gold); font-weight:700; }
+  .prob-bar-track{
+    height:8px; background:var(--panel-2);
+    border-radius:2px; overflow:hidden;
+  }
+  .prob-bar-fill{ height:100%; background:var(--gold); }
+
+  .market-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    margin-top:20px;
+  }
+  .market-card{
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:14px 16px;
+  }
+  .market-card .mk-label{ color:var(--muted); font-size:0.78rem; margin-bottom:4px; }
+  .market-card .mk-val{ font-family:'JetBrains Mono',monospace; font-size:1.2rem; }
+
+  .verdict{
+    background:var(--panel);
+    border-left:3px solid var(--gold);
+    border-radius:0 4px 4px 0;
+    padding:18px 20px;
+    font-size:0.92rem;
+  }
+  .verdict p{ margin:0 0 10px; }
+  .verdict p:last-child{ margin-bottom:0; }
+  .flag{ color:var(--alert); }
+  .highlight{ color:var(--gold); }
+
+  .empty-note{
+    color:var(--muted-2);
+    font-size:0.85rem;
+    padding:20px 0;
+    text-align:center;
+  }
+  footer{
+    margin-top:60px;
+    padding-top:20px;
+    border-top:1px solid var(--line);
+    color:var(--muted-2);
+    font-size:0.75rem;
+    font-family:'JetBrains Mono',monospace;
+  }
+</style>
 </head>
 <body>
-  <div id="app"></div>
-  <script>
-    let user = null;
-    let matches = [];
-    let activeTab = 'matches';
-    const app = document.getElementById('app');
+<div class="wrap">
 
-    function renderLogin() {
-      app.innerHTML = `
-        <div class="login-container">
-          <h1 style="text-align: center; color: #378add; margin-bottom: 1rem;">⚽ Análisis de Apuestas</h1>
-          <p style="text-align: center; color: #888; margin-bottom: 1rem; font-size: 12px;">7 Mercados Profesionales + Estadísticas</p>
-          <input type="email" id="email" placeholder="correo@ejemplo.com">
-          <input type="password" id="password" placeholder="contraseña">
-          <button onclick="handleLogin()">Iniciar sesión</button>
-          <div class="demo">💡 Demo: usa cualquier correo/contraseña</div>
+  <header class="masthead">
+    <div>
+      <h1>Expediente Deportivo</h1>
+      <p>Motor de análisis estadístico automático. Selecciona una liga, elige un partido y el sistema construye el expediente solo: forma, ofensiva/defensiva, historial e indicadores de riesgo.</p>
+    </div>
+    <div class="file-meta" id="todayMeta"></div>
+  </header>
+
+  <div class="comp-row" id="compRow"></div>
+  <div class="status-line" id="statusLine">Selecciona una o varias ligas para cargar los partidos del día.</div>
+  <div class="match-list" id="matchList"></div>
+
+  <div class="dossier" id="dossier"></div>
+
+  <footer>DATOS: FOOTBALL-DATA.ORG · MODELO: POISSON SOBRE PROMEDIOS DE TEMPORADA · USO INVESTIGATIVO PERSONAL</footer>
+</div>
+
+<script>
+// Las llamadas ya no van directo a football-data.org (el navegador no puede,
+// por política CORS de esa API) — pasan por nuestra función /api/football,
+// que corre en el servidor de Vercel.
+
+const COMPETITIONS = [
+  {code:"PL", name:"Premier League"},
+  {code:"PD", name:"La Liga"},
+  {code:"SA", name:"Serie A"},
+  {code:"BL1", name:"Bundesliga"},
+  {code:"FL1", name:"Ligue 1"},
+  {code:"BSA", name:"Brasileirão"},
+  {code:"PPL", name:"Primeira Liga"},
+  {code:"DED", name:"Eredivisie"},
+  {code:"CL", name:"Champions League"},
+  {code:"ELC", name:"Championship"},
+];
+
+let activeCompetitions = new Set();
+let standingsCache = {};
+
+function todayISO(){
+  return new Date().toISOString().slice(0,10);
+}
+
+document.getElementById("todayMeta").textContent =
+  "FECHA " + todayISO().split("-").reverse().join("/");
+
+function renderChips(){
+  const row = document.getElementById("compRow");
+  row.innerHTML = "";
+  COMPETITIONS.forEach(c=>{
+    const chip = document.createElement("div");
+    chip.className = "comp-chip";
+    chip.textContent = c.name;
+    chip.onclick = ()=> toggleCompetition(c.code, chip);
+    row.appendChild(chip);
+  });
+}
+renderChips();
+
+async function apiGet(path){
+  const res = await fetch("/api/football?path=" + encodeURIComponent(path));
+  if(!res.ok){
+    throw new Error("API " + res.status + " en " + path);
+  }
+  return res.json();
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+async function toggleCompetition(code, chipEl){
+  if(activeCompetitions.has(code)){
+    activeCompetitions.delete(code);
+    chipEl.classList.remove("active");
+  } else {
+    activeCompetitions.add(code);
+    chipEl.classList.add("active");
+  }
+  await loadMatches();
+}
+
+async function loadMatches(){
+  const listEl = document.getElementById("matchList");
+  const statusEl = document.getElementById("statusLine");
+  document.getElementById("dossier").classList.remove("open");
+  listEl.innerHTML = "";
+
+  if(activeCompetitions.size === 0){
+    statusEl.textContent = "Selecciona una o varias ligas para cargar los partidos del día.";
+    return;
+  }
+
+  statusEl.textContent = "Consultando partidos del día...";
+  let allMatches = [];
+  const date = todayISO();
+
+  for(const code of activeCompetitions){
+    try{
+      const data = await apiGet(`/competitions/${code}/matches?dateFrom=${date}&dateTo=${date}`);
+      (data.matches || []).forEach(m => m._compName = COMPETITIONS.find(c=>c.code===code)?.name || code);
+      allMatches = allMatches.concat(data.matches || []);
+      await sleep(650); // respeto de límite de tasa del plan gratuito
+    }catch(e){
+      console.warn(e);
+    }
+  }
+
+  if(allMatches.length === 0){
+    statusEl.textContent = "";
+    listEl.innerHTML = '<div class="empty-note">No hay partidos programados hoy en las ligas seleccionadas.</div>';
+    return;
+  }
+
+  allMatches.sort((a,b)=> new Date(a.utcDate) - new Date(b.utcDate));
+  statusEl.textContent = allMatches.length + " partido(s) encontrado(s) para hoy.";
+
+  allMatches.forEach(m=>{
+    const row = document.createElement("div");
+    row.className = "match-row";
+    const time = new Date(m.utcDate).toLocaleTimeString('es-PE', {hour:'2-digit', minute:'2-digit'});
+    row.innerHTML = `
+      <div>
+        <div class="teams">${m.homeTeam.name} vs ${m.awayTeam.name}</div>
+        <div class="sub">${m._compName}</div>
+      </div>
+      <div class="time">${time}</div>
+    `;
+    row.onclick = ()=> buildDossier(m);
+    listEl.appendChild(row);
+  });
+}
+
+async function getStandings(competitionCode){
+  if(standingsCache[competitionCode]) return standingsCache[competitionCode];
+  const data = await apiGet(`/competitions/${competitionCode}/standings`);
+  const table = (data.standings.find(s=>s.type==="TOTAL") || data.standings[0]).table;
+  standingsCache[competitionCode] = table;
+  return table;
+}
+
+function findTeamRow(table, teamId){
+  return table.find(r=>r.team.id === teamId);
+}
+
+function leagueAverages(table){
+  let totalGF=0, totalGA=0, totalPlayed=0;
+  table.forEach(r=>{
+    totalGF += r.goalsFor;
+    totalGA += r.goalsAgainst;
+    totalPlayed += r.playedGames;
+  });
+  return {
+    avgGoalsFor: totalGF/totalPlayed,
+    avgGoalsAgainst: totalGA/totalPlayed
+  };
+}
+
+async function getRecentForm(teamId){
+  const data = await apiGet(`/teams/${teamId}/matches?status=FINISHED&limit=5`);
+  const matches = (data.matches || []).slice(-5);
+  return matches.map(m=>{
+    const isHome = m.homeTeam.id === teamId;
+    const own = isHome ? m.score.fullTime.home : m.score.fullTime.away;
+    const opp = isHome ? m.score.fullTime.away : m.score.fullTime.home;
+    if(own === null || opp === null) return null;
+    if(own > opp) return "W";
+    if(own < opp) return "L";
+    return "D";
+  }).filter(Boolean);
+}
+
+async function getH2H(matchId){
+  try{
+    const data = await apiGet(`/matches/${matchId}/head2head?limit=5`);
+    return data.matches || [];
+  }catch(e){ return []; }
+}
+
+// --- Modelo de Poisson ---
+function factorial(n){ return n<=1 ? 1 : n*factorial(n-1); }
+function poissonPMF(k, lambda){ return Math.exp(-lambda) * Math.pow(lambda,k) / factorial(k); }
+
+function computeMarkets(lambdaHome, lambdaAway){
+  const MAXG = 8;
+  let pHome=0, pDraw=0, pAway=0, pOver25=0, pBTTS=0;
+  for(let h=0; h<=MAXG; h++){
+    for(let a=0; a<=MAXG; a++){
+      const p = poissonPMF(h, lambdaHome) * poissonPMF(a, lambdaAway);
+      if(h>a) pHome += p;
+      else if(h===a) pDraw += p;
+      else pAway += p;
+      if(h+a > 2.5) pOver25 += p;
+      if(h>0 && a>0) pBTTS += p;
+    }
+  }
+  return {pHome, pDraw, pAway, pOver25, pBTTS};
+}
+
+function pct(x){ return (x*100).toFixed(1) + "%"; }
+
+async function buildDossier(match){
+  const dossier = document.getElementById("dossier");
+  dossier.classList.add("open");
+  dossier.innerHTML = '<div class="empty-note">Construyendo expediente, cruzando datos de temporada...</div>';
+  dossier.scrollIntoView({behavior:"smooth", block:"start"});
+
+  try{
+    const compCode = match.competition.code;
+    const table = await getStandings(compCode);
+    await sleep(400);
+    const homeRow = findTeamRow(table, match.homeTeam.id);
+    const awayRow = findTeamRow(table, match.awayTeam.id);
+    const leagueAvg = leagueAverages(table);
+
+    const homeForm = await getRecentForm(match.homeTeam.id);
+    await sleep(400);
+    const awayForm = await getRecentForm(match.awayTeam.id);
+    await sleep(400);
+    const h2h = await getH2H(match.id);
+
+    // fuerza de ataque/defensa relativa a la media de liga
+    const homeGFpg = homeRow.goalsFor / homeRow.playedGames;
+    const homeGApg = homeRow.goalsAgainst / homeRow.playedGames;
+    const awayGFpg = awayRow.goalsFor / awayRow.playedGames;
+    const awayGApg = awayRow.goalsAgainst / awayRow.playedGames;
+
+    const homeAttack = homeGFpg / leagueAvg.avgGoalsFor;
+    const homeDefense = homeGApg / leagueAvg.avgGoalsAgainst;
+    const awayAttack = awayGFpg / leagueAvg.avgGoalsFor;
+    const awayDefense = awayGApg / leagueAvg.avgGoalsAgainst;
+
+    const lambdaHome = homeAttack * awayDefense * leagueAvg.avgGoalsFor;
+    const lambdaAway = awayAttack * homeDefense * leagueAvg.avgGoalsAgainst;
+
+    const markets = computeMarkets(lambdaHome, lambdaAway);
+
+    // detección de inconsistencia: forma reciente vs promedio de temporada
+    function formScore(formArr){
+      const map = {W:3, D:1, L:0};
+      if(formArr.length===0) return null;
+      return formArr.reduce((s,r)=>s+map[r],0) / (formArr.length*3);
+    }
+    const homeFormScore = formScore(homeForm);
+    const awayFormScore = formScore(awayForm);
+    const homeSeasonScore = homeRow.points / (homeRow.playedGames*3);
+    const awaySeasonScore = awayRow.points / (awayRow.playedGames*3);
+
+    const flags = [];
+    if(homeFormScore !== null && Math.abs(homeFormScore - homeSeasonScore) > 0.35){
+      flags.push(`${match.homeTeam.name} muestra una forma reciente que se aparta notablemente de su promedio de temporada (posible cambio de tendencia).`);
+    }
+    if(awayFormScore !== null && Math.abs(awayFormScore - awaySeasonScore) > 0.35){
+      flags.push(`${match.awayTeam.name} muestra una forma reciente que se aparta notablemente de su promedio de temporada (posible cambio de tendencia).`);
+    }
+
+    const outcomes = [
+      {label: match.homeTeam.name + " gana", val: markets.pHome},
+      {label: "Empate", val: markets.pDraw},
+      {label: match.awayTeam.name + " gana", val: markets.pAway},
+    ].sort((a,b)=>b.val-a.val);
+
+    const favored = outcomes[0];
+
+    dossier.innerHTML = `
+      <div class="dossier-head">
+        <h2>${match.homeTeam.name} vs ${match.awayTeam.name}</h2>
+        <div class="code">${match.competition.name} · ${new Date(match.utcDate).toLocaleString('es-PE')}</div>
+      </div>
+      <div class="dossier-sub">Expediente generado automáticamente a partir de datos de temporada en curso.</div>
+
+      <div class="section">
+        <div class="section-label"><span class="section-num">01</span><h3>Posición en tabla</h3></div>
+        <div class="two-col">
+          <div class="team-block">
+            <div class="name">${match.homeTeam.name}</div>
+            <div class="stat-row"><span class="k">Posición</span><span class="v">${homeRow.position}ª</span></div>
+            <div class="stat-row"><span class="k">Puntos</span><span class="v">${homeRow.points}</span></div>
+            <div class="stat-row"><span class="k">PJ</span><span class="v">${homeRow.playedGames}</span></div>
+            <div class="stat-row"><span class="k">GF / GC</span><span class="v">${homeRow.goalsFor} / ${homeRow.goalsAgainst}</span></div>
+          </div>
+          <div class="team-block">
+            <div class="name">${match.awayTeam.name}</div>
+            <div class="stat-row"><span class="k">Posición</span><span class="v">${awayRow.position}ª</span></div>
+            <div class="stat-row"><span class="k">Puntos</span><span class="v">${awayRow.points}</span></div>
+            <div class="stat-row"><span class="k">PJ</span><span class="v">${awayRow.playedGames}</span></div>
+            <div class="stat-row"><span class="k">GF / GC</span><span class="v">${awayRow.goalsFor} / ${awayRow.goalsAgainst}</span></div>
+          </div>
         </div>
-      `;
-      document.getElementById('email').focus();
-    }
+      </div>
 
-    function handleLogin() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      if (email && password) {
-        user = { email, name: email.split('@')[0] };
-        loadMatches();
-      }
-    }
-
-    async function loadMatches() {
-      app.innerHTML = `<div class="loading">⏳ Cargando partidos con 7 mercados...</div>`;
-      try {
-        const response = await fetch('/api/matches');
-        const data = await response.json();
-        matches = data.matches || [];
-        renderApp();
-      } catch (error) {
-        app.innerHTML = `<div class="card" style="background: #fcebeb; color: #d03b3b;">Error: ${error.message}</div>`;
-      }
-    }
-
-    function renderMercado(nombre, icon, opciones) {
-      return `
-        <div class="mercado">
-          <div class="mercado-titulo">
-            <span class="mercado-icon">${icon}</span>
-            <span>${nombre}</span>
+      <div class="section">
+        <div class="section-label"><span class="section-num">02</span><h3>Forma reciente (últimos 5)</h3></div>
+        <div class="two-col">
+          <div class="team-block">
+            <div class="name">${match.homeTeam.name}</div>
+            <div class="form-dots">${homeForm.map(r=>`<span class="dot ${r}">${r}</span>`).join("") || '<span class="k">Sin datos</span>'}</div>
           </div>
-          <div class="opciones">
-            ${opciones.map(op => `
-              <div class="opcion">
-                <div class="opcion-left">
-                  <div class="opcion-nombre">${op.nombre}</div>
-                  <div class="opcion-prob">↓ ${op.prob}%</div>
-                </div>
-                <div class="opcion-cuota">${op.cuota}</div>
-              </div>
-            `).join('')}
+          <div class="team-block">
+            <div class="name">${match.awayTeam.name}</div>
+            <div class="form-dots">${awayForm.map(r=>`<span class="dot ${r}">${r}</span>`).join("") || '<span class="k">Sin datos</span>'}</div>
           </div>
         </div>
-      `;
-    }
+      </div>
 
-    function renderApp() {
-      let content = '';
-
-      if (activeTab === 'matches') {
-        if (matches.length === 0) {
-          content = `<div class="card" style="text-align: center; color: #888;">No hay partidos EN VIVO ahora</div>`;
-        } else {
-          content = matches.map(m => `
-            <div class="match-card">
-              <div class="match-header">
-                <div class="team-vs">${m.competition}</div>
-                <div class="team-names">${m.homeTeam} vs ${m.awayTeam}</div>
-                <div style="font-size: 11px; color: #888; margin-top: 6px;">${new Date(m.date).toLocaleString('es-PE')}</div>
-                <div style="margin-top: 6px;">
-                  <span class="status-badge">${m.status === 'LIVE' || m.status === 'IN_PLAY' ? '🔴 EN VIVO' : '📅'}</span>
-                </div>
-              </div>
-              
-              ${renderMercado('Ganador (1x2)', '🏆', [
-                { nombre: '1 - ' + m.homeTeam, cuota: m.mercado1x2['1'].cuota, prob: m.mercado1x2['1'].probabilidad },
-                { nombre: 'X - Empate', cuota: m.mercado1x2['X'].cuota, prob: m.mercado1x2['X'].probabilidad },
-                { nombre: '2 - ' + m.awayTeam, cuota: m.mercado1x2['2'].cuota, prob: m.mercado1x2['2'].probabilidad }
-              ])}
-              
-              ${renderMercado('Over/Under 2.5 Goles', '⚽', [
-                { nombre: 'Over 2.5', cuota: m.overUnder25['Over2.5'].cuota, prob: m.overUnder25['Over2.5'].probabilidad },
-                { nombre: 'Under 2.5', cuota: m.overUnder25['Under2.5'].cuota, prob: m.overUnder25['Under2.5'].probabilidad }
-              ])}
-              
-              ${renderMercado('Ambos Equipos Anotan', '⚽⚽', [
-                { nombre: 'Sí', cuota: m.bothScore['Sí'].cuota, prob: m.bothScore['Sí'].probabilidad },
-                { nombre: 'No', cuota: m.bothScore['No'].cuota, prob: m.bothScore['No'].probabilidad }
-              ])}
-              
-              ${renderMercado('Corners O/U 8.5', '🚩', [
-                { nombre: 'Over 8.5', cuota: m.overUnderCorners['Over8.5'].cuota, prob: m.overUnderCorners['Over8.5'].probabilidad },
-                { nombre: 'Under 8.5', cuota: m.overUnderCorners['Under8.5'].cuota, prob: m.overUnderCorners['Under8.5'].probabilidad }
-              ])}
-              
-              ${renderMercado('Remates O/U 21.5', '🎯', [
-                { nombre: 'Over 21.5', cuota: m.overUnderShots['Over21.5'].cuota, prob: m.overUnderShots['Over21.5'].probabilidad },
-                { nombre: 'Under 21.5', cuota: m.overUnderShots['Under21.5'].cuota, prob: m.overUnderShots['Under21.5'].probabilidad }
-              ])}
-              
-              ${renderMercado('Remates a Puerta O/U 7.5', '🎪', [
-                { nombre: 'Over 7.5', cuota: m.overUnderSoT['Over7.5'].cuota, prob: m.overUnderSoT['Over7.5'].probabilidad },
-                { nombre: 'Under 7.5', cuota: m.overUnderSoT['Under7.5'].cuota, prob: m.overUnderSoT['Under7.5'].probabilidad }
-              ])}
-              
-              ${renderMercado('Handicap Asiático', '⚖️', [
-                { nombre: m.handicap['-1.5'].desc, cuota: m.handicap['-1.5'].cuota, prob: m.handicap['-1.5'].probabilidad },
-                { nombre: m.handicap['-1'].desc, cuota: m.handicap['-1'].cuota, prob: m.handicap['-1'].probabilidad },
-                { nombre: m.handicap['0'].desc, cuota: m.handicap['0'].cuota, prob: m.handicap['0'].probabilidad },
-                { nombre: m.handicap['+1'].desc, cuota: m.handicap['+1'].cuota, prob: m.handicap['+1'].probabilidad }
-              ])}
-              
-              <div class="stats-box">
-                <strong>📊 Estadísticas Estimadas:</strong>
-                <div class="stats-row">
-                  <span>Goles promedio: ${m.stats.promedioGoles}</span>
-                  <span>Corners est.: ${m.stats.cornersLocal.split('.')[0]} - ${m.stats.cornersVisita.split('.')[0]}</span>
-                </div>
-                <div class="stats-row">
-                  <span>Remates: ${m.stats.rematesLocal.split('.')[0]} - ${m.stats.rematesVisita.split('.')[0]}</span>
-                  <span>Remates puerta: ${m.stats.rematesAuertaLocal.split('.')[0]} - ${m.stats.rematesAuertaVisita.split('.')[0]}</span>
-                </div>
-              </div>
-            </div>
-          `).join('');
-        }
-      } else if (activeTab === 'info') {
-        content = `
-          <div class="card" style="background: #eaf3de; border-color: #0ca30c; border-left: 4px solid #0ca30c;">
-            <h3 style="color: #0ca30c; margin-bottom: 12px; font-size: 14px;">✅ 7 Mercados Profesionales</h3>
-            <ol style="color: #0ca30c; font-size: 13px; line-height: 2; padding-left: 20px;">
-              <li><strong>Ganador (1x2):</strong> Quién gana</li>
-              <li><strong>Over/Under 2.5:</strong> Goles totales</li>
-              <li><strong>Ambos Anotan:</strong> ¿Marcan dos?</li>
-              <li><strong>Corners O/U 8.5:</strong> Esquinas</li>
-              <li><strong>Remates O/U 21.5:</strong> Disparos totales</li>
-              <li><strong>Remates Puerta O/U 7.5:</strong> A portería</li>
-              <li><strong>Handicap Asiático:</strong> Ventaja goles</li>
-            </ol>
+      <div class="section">
+        <div class="section-label"><span class="section-num">03</span><h3>Ofensiva y defensiva (por partido)</h3></div>
+        <div class="two-col">
+          <div class="team-block">
+            <div class="stat-row"><span class="k">Goles a favor</span><span class="v">${homeGFpg.toFixed(2)}</span></div>
+            <div class="stat-row"><span class="k">Goles en contra</span><span class="v">${homeGApg.toFixed(2)}</span></div>
+            <div class="stat-row"><span class="k">Índice de ataque</span><span class="v">${homeAttack.toFixed(2)}</span></div>
+            <div class="stat-row"><span class="k">Índice de defensa</span><span class="v">${homeDefense.toFixed(2)}</span></div>
           </div>
-          
-          <div class="card">
-            <h4 style="margin-bottom: 10px; color: #378add;">💡 Estrategia Profesional:</h4>
-            <p style="font-size: 13px; line-height: 1.8; color: #666;">
-              <strong>1. Lee la cuota "justa"</strong> que calcula la app<br>
-              <strong>2. Abre Betano/1xBet</strong> en otra pestaña<br>
-              <strong>3. Compara cuotas:</strong> ¿Betano ofrece MÁS?<br>
-              <strong>4. Si ofrece más = VALOR</strong> (esa es tu apuesta)<br>
-              <strong>5. Ej:</strong> App dice 2.0, Betano 2.15 = +7.5% valor
-            </p>
-          </div>
-          
-          <div class="card" style="background: #fcfbf0; border-left: 3px solid #ba7517;">
-            <h4 style="margin-bottom: 10px; color: #ba7517;">⚠️ Importantes:</h4>
-            <ul style="font-size: 12px; color: #ba7517; line-height: 1.8; padding-left: 20px;">
-              <li>Las probabilidades son ESTIMADAS (no datos reales)</li>
-              <li>Las cuotas "justas" usan cálculos estadísticos</li>
-              <li>El valor real depende de Betano/1xBet</li>
-              <li>Siempre compara con las casas antes de apostar</li>
-            </ul>
-          </div>
-        `;
-      }
-
-      app.innerHTML = `
-        <div class="container">
-          <div class="header">
-            <h1>⚽ Análisis de Apuestas PRO</h1>
-            <p>🔴 7 MERCADOS + Estadísticas Avanzadas 🇵🇪</p>
-          </div>
-          <div class="content">${content}</div>
-          <div class="tabs">
-            <button class="tab ${activeTab === 'matches' ? 'active' : ''}" onclick="switchTab('matches')">📊 Partidos</button>
-            <button class="tab ${activeTab === 'info' ? 'active' : ''}" onclick="switchTab('info')">📖 Guía</button>
+          <div class="team-block">
+            <div class="stat-row"><span class="k">Goles a favor</span><span class="v">${awayGFpg.toFixed(2)}</span></div>
+            <div class="stat-row"><span class="k">Goles en contra</span><span class="v">${awayGApg.toFixed(2)}</span></div>
+            <div class="stat-row"><span class="k">Índice de ataque</span><span class="v">${awayAttack.toFixed(2)}</span></div>
+            <div class="stat-row"><span class="k">Índice de defensa</span><span class="v">${awayDefense.toFixed(2)}</span></div>
           </div>
         </div>
-      `;
-    }
+      </div>
 
-    function switchTab(tab) {
-      activeTab = tab;
-      renderApp();
-    }
+      <div class="section">
+        <div class="section-label"><span class="section-num">04</span><h3>Historial directo</h3></div>
+        ${h2h.length ? h2h.map(hm=>`
+          <div class="h2h-line">
+            <span>${hm.homeTeam.name} ${hm.score.fullTime.home ?? "-"} - ${hm.score.fullTime.away ?? "-"} ${hm.awayTeam.name}</span>
+            <span class="date">${new Date(hm.utcDate).toLocaleDateString('es-PE')}</span>
+          </div>
+        `).join("") : '<div class="empty-note">Sin enfrentamientos recientes registrados.</div>'}
+      </div>
 
-    renderLogin();
-  </script>
+      <div class="section">
+        <div class="section-label"><span class="section-num">05</span><h3>Modelo estadístico (Poisson)</h3></div>
+        ${outcomes.map(o=>`
+          <div class="prob-bar-wrap">
+            <div class="prob-bar-top"><span class="label">${o.label}</span><span class="pct">${pct(o.val)}</span></div>
+            <div class="prob-bar-track"><div class="prob-bar-fill" style="width:${(o.val*100).toFixed(1)}%"></div></div>
+          </div>
+        `).join("")}
+        <div class="market-grid">
+          <div class="market-card">
+            <div class="mk-label">Goles esperados (xG modelo)</div>
+            <div class="mk-val">${lambdaHome.toFixed(2)} - ${lambdaAway.toFixed(2)}</div>
+          </div>
+          <div class="market-card">
+            <div class="mk-label">Prob. Over 2.5 goles</div>
+            <div class="mk-val">${pct(markets.pOver25)}</div>
+          </div>
+          <div class="market-card">
+            <div class="mk-label">Prob. Under 2.5 goles</div>
+            <div class="mk-val">${pct(1-markets.pOver25)}</div>
+          </div>
+          <div class="market-card">
+            <div class="mk-label">Ambos anotan (BTTS)</div>
+            <div class="mk-val">${pct(markets.pBTTS)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label"><span class="section-num">06</span><h3>Veredicto investigativo</h3></div>
+        <div class="verdict">
+          <p>El modelo estadístico favorece a <span class="highlight">${favored.label}</span> con ${pct(favored.val)} de probabilidad, basado en el desempeño ofensivo/defensivo de la temporada en curso.</p>
+          <p>${markets.pOver25 > 0.55 ? "El total de goles esperado sugiere un partido abierto (favorece Over 2.5)." : "El total de goles esperado sugiere un partido cerrado (favorece Under 2.5)."}</p>
+          ${flags.length ? flags.map(f=>`<p class="flag">⚠ ${f}</p>`).join("") : '<p>No se detectaron inconsistencias relevantes entre la forma reciente y el promedio de temporada de ninguno de los dos equipos.</p>'}
+        </div>
+      </div>
+    `;
+
+  }catch(e){
+    console.error(e);
+    dossier.innerHTML = `<div class="empty-note">No se pudo construir el expediente (${e.message}). Puede deberse al límite de solicitudes gratuito de la API — intenta de nuevo en unos segundos.</div>`;
+  }
+}
+</script>
 </body>
 </html>
